@@ -3,12 +3,121 @@
  */
 package org.example;
 
+import java.io.IOException;
+import java.util.*;
+
+import org.entities.Train;
+import org.entities.User;
+import org.services.UserBookingService;
+import org.util.UserServiceUtil;
+
 public class App {
-    public String getGreeting() {
-        return "Hello World!";
-    }
 
     public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
+        System.out.println("Running IRCTC System...");
+        Scanner scanner = new Scanner(System.in);
+        int option = 0;
+        UserBookingService ubs;
+        Train trainSelectedForBooking = new Train();
+        try {
+            // To load users.
+            ubs = new UserBookingService();
+        } catch (IOException e) {
+            // If system fails to load users
+            System.out.print("Something went wrong!");
+            return;
+        }
+
+        // There will be 7 options for user until then loop will be running!
+        while (option != 7) {
+            System.out.println("Choose Option");
+            System.out.println("1 - Sign up");
+            System.out.println("2 - Login");
+            System.out.println("3 - Fetch Bookings");
+            System.out.println("4 - Search Trains");
+            System.out.println("5 - Book a Seat");
+            System.out.println("6 - Cancel My Booking");
+            System.out.println("7 - Exit");
+
+            option = scanner.nextInt();
+
+            switch (option) {
+                case 1:
+                    System.out.println("Enter username to signup");
+                    String username = scanner.next();
+                    System.out.println("Enter password to signup");
+                    String password = scanner.next();
+
+                    // To Create a user to sign up
+                    // we already have name and pass above, now required are tickets, id and hashedPass
+                    String hashedPass = UserServiceUtil.hashPassword(password);
+                    String generatedUserId = UUID.randomUUID().toString();   // just a random id
+                    List userTickets = new ArrayList<>();
+
+                    User userToSignUp = new User(username, generatedUserId, userTickets, hashedPass, password);
+                    ubs.signUpUser(userToSignUp);  // Finally signing up the user!
+                    break;
+                case 2:
+                    System.out.println("Enter the username to Login");
+                    String nameToLogin = scanner.next();
+                    System.out.println("Enter the password to signup");
+                    String passwordToLogin = scanner.next();
+
+                    String hashedLoginPass = UserServiceUtil.hashPassword(passwordToLogin);
+                    String generatedLoginUserId = UUID.randomUUID().toString();   // just a random id
+                    List userLoginTickets = new ArrayList<>();
+                    User userToLogin = new User(nameToLogin, generatedLoginUserId, userLoginTickets, hashedLoginPass, passwordToLogin);
+                    try {
+                        ubs = new UserBookingService(userToLogin);
+                    } catch (IOException ex) {
+                        return;
+                    }
+                    break;
+                case 3:
+                    System.out.println("Fetching your bookings");
+                    ubs.fetchBooking();
+                    break;
+                case 4:
+                    System.out.println("Type your source station");
+                    String source = scanner.next();
+                    System.out.println("Type your destination station");
+                    String dest = scanner.next();
+                    List<Train> trains = ubs.getTrains(source, dest);
+                    int index = 1;
+                    for (Train t : trains) {
+                        System.out.println(index + " Train id : " + t.getTrainId());
+                        for (Map.Entry<String, String> entry : t.getStationTimes().entrySet()) {
+                            System.out.println("station " + entry.getKey() + " time: " + entry.getValue());
+                        }
+                    }
+                    System.out.println("Select a train by typing 1,2,3...");
+                    trainSelectedForBooking = trains.get(scanner.nextInt());
+                    break;
+                case 5:
+                    System.out.println("Select a seat out of these seats");
+                    List<List<Integer>> seats = ubs.fetchSeats(trainSelectedForBooking);
+                    for (List<Integer> row : seats) {
+                        for (Integer val : row) {
+                            System.out.print(val + " ");
+                        }
+                        System.out.println();
+                    }
+                    System.out.println("Select the seat by typing the row and column");
+                    System.out.println("Enter the row");
+                    int row = scanner.nextInt();
+                    System.out.println("Enter the column");
+                    int col = scanner.nextInt();
+                    System.out.println("Booking your seat....");
+                    Boolean booked = ubs.bookTrainSeat(trainSelectedForBooking, row, col);
+                    if (booked.equals(Boolean.TRUE)) {
+                        System.out.println("Booked! Enjoy your journey");
+                    } else {
+                        System.out.println("Can't book this seat");
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 }
